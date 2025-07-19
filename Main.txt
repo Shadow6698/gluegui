@@ -1,0 +1,253 @@
+-- Script GUI Simples para Grudar/Desgrudar Players
+-- Versão simplificada para garantir que funcione
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local playerGui = LocalPlayer:WaitForChild("PlayerGui")
+
+-- Variáveis
+local attachmentA, alignPos, alignOri = nil, nil, nil
+local isAttached = false
+local targetPlayer = nil
+
+print("🔄 Iniciando criação da GUI...")
+
+-- Remover GUI antiga se existir
+if playerGui:FindFirstChild("PlayerAttachGUI") then
+    playerGui.PlayerAttachGUI:Destroy()
+end
+
+-- Criar GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "PlayerAttachGUI"
+screenGui.Parent = playerGui
+
+print("📱 ScreenGui criada...")
+
+-- Frame principal - versão simples
+local mainFrame = Instance.new("Frame")
+mainFrame.Parent = screenGui
+mainFrame.BackgroundColor3 = Color3.new(0.2, 0.2, 0.3)
+mainFrame.BorderSizePixel = 2
+mainFrame.BorderColor3 = Color3.new(0, 0.5, 1)
+mainFrame.Position = UDim2.new(0, 20, 0, 20)
+mainFrame.Size = UDim2.new(0, 280, 0, 140)
+mainFrame.Active = true
+mainFrame.Draggable = true
+
+print("🖼️ Frame principal criado...")
+
+-- Título
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Parent = mainFrame
+titleLabel.BackgroundTransparency = 1
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.Size = UDim2.new(1, 0, 0, 25)
+titleLabel.Text = "Player Attach GUI"
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
+titleLabel.TextSize = 16
+titleLabel.Font = Enum.Font.SourceSansBold
+
+-- TextBox
+local playerTextBox = Instance.new("TextBox")
+playerTextBox.Parent = mainFrame
+playerTextBox.BackgroundColor3 = Color3.new(0.3, 0.3, 0.4)
+playerTextBox.BorderSizePixel = 1
+playerTextBox.BorderColor3 = Color3.new(0.5, 0.5, 0.6)
+playerTextBox.Position = UDim2.new(0, 10, 0, 35)
+playerTextBox.Size = UDim2.new(1, -20, 0, 25)
+playerTextBox.PlaceholderText = "Digite o nick do player..."
+playerTextBox.Text = ""
+playerTextBox.TextColor3 = Color3.new(1, 1, 1)
+playerTextBox.TextSize = 14
+playerTextBox.Font = Enum.Font.SourceSans
+
+-- Botão Grudar
+local attachButton = Instance.new("TextButton")
+attachButton.Parent = mainFrame
+attachButton.BackgroundColor3 = Color3.new(0.2, 0.8, 0.2)
+attachButton.BorderSizePixel = 1
+attachButton.BorderColor3 = Color3.new(0.1, 0.6, 0.1)
+attachButton.Position = UDim2.new(0, 10, 0, 75)
+attachButton.Size = UDim2.new(0.45, -5, 0, 30)
+attachButton.Text = "GRUDAR"
+attachButton.TextColor3 = Color3.new(1, 1, 1)
+attachButton.TextSize = 14
+attachButton.Font = Enum.Font.SourceSansBold
+
+-- Botão Desgrudar
+local detachButton = Instance.new("TextButton")
+detachButton.Parent = mainFrame
+detachButton.BackgroundColor3 = Color3.new(0.8, 0.2, 0.2)
+detachButton.BorderSizePixel = 1
+detachButton.BorderColor3 = Color3.new(0.6, 0.1, 0.1)
+detachButton.Position = UDim2.new(0.55, 5, 0, 75)
+detachButton.Size = UDim2.new(0.45, -5, 0, 30)
+detachButton.Text = "DESGRUDAR"
+detachButton.TextColor3 = Color3.new(1, 1, 1)
+detachButton.TextSize = 14
+detachButton.Font = Enum.Font.SourceSansBold
+
+-- Status
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Parent = mainFrame
+statusLabel.BackgroundTransparency = 1
+statusLabel.Position = UDim2.new(0, 0, 0, 115)
+statusLabel.Size = UDim2.new(1, 0, 0, 20)
+statusLabel.Text = "Status: Livre"
+statusLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.SourceSans
+
+print("✅ Todos os elementos criados!")
+
+-- Função para encontrar player
+local function findPlayer(name)
+    name = string.lower(name)
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            if string.find(string.lower(player.Name), name) or string.find(string.lower(player.DisplayName), name) then
+                return player
+            end
+        end
+    end
+    return nil
+end
+
+-- Função para desgrudar
+local function unglue()
+    if alignPos then alignPos:Destroy() end
+    if alignOri then alignOri:Destroy() end
+    if attachmentA then attachmentA:Destroy() end
+    alignPos, alignOri, attachmentA = nil, nil, nil
+    
+    -- Descongela
+    pcall(function()
+        LocalPlayer.Character.Humanoid.PlatformStand = false
+    end)
+    
+    isAttached = false
+    targetPlayer = nil
+end
+
+-- Função para grudar
+local function glueTo(targetPlayerObj)
+    if not targetPlayerObj then
+        statusLabel.Text = "Player nao encontrado!"
+        statusLabel.TextColor3 = Color3.new(1, 0.4, 0.4)
+        return
+    end
+    
+    local targetChar = targetPlayerObj.Character
+    local myChar = LocalPlayer.Character
+    
+    if not targetChar or not myChar then
+        statusLabel.Text = "Character nao encontrado!"
+        statusLabel.TextColor3 = Color3.new(1, 0.4, 0.4)
+        return
+    end
+    
+    local rootMine = myChar:FindFirstChild("HumanoidRootPart")
+    local rootTarget = targetChar:FindFirstChild("HumanoidRootPart")
+    
+    if not rootMine or not rootTarget then
+        statusLabel.Text = "RootPart nao encontrado!"
+        statusLabel.TextColor3 = Color3.new(1, 0.4, 0.4)
+        return
+    end
+    
+    -- Desgruda antes
+    unglue()
+    
+    -- TELEPORTE INSTANTANEO para o player
+    rootMine.CFrame = rootTarget.CFrame
+    print("⚡ Teleportado para: " .. targetPlayerObj.Name)
+    
+    -- Cria attachments
+    local attMine = Instance.new("Attachment", rootMine)
+    local attTarget = Instance.new("Attachment", rootTarget)
+    
+    -- AlignPosition (grudagem forte)
+    alignPos = Instance.new("AlignPosition", rootMine)
+    alignPos.Attachment0 = attMine
+    alignPos.Attachment1 = attTarget
+    alignPos.RigidityEnabled = true
+    alignPos.MaxForce = math.huge
+    alignPos.Responsiveness = 200
+    
+    -- AlignOrientation (rotação)
+    alignOri = Instance.new("AlignOrientation", rootMine)
+    alignOri.Attachment0 = attMine
+    alignOri.Attachment1 = attTarget
+    alignOri.RigidityEnabled = true
+    alignOri.MaxTorque = math.huge
+    alignOri.Responsiveness = 200
+    
+    attachmentA = attMine
+    isAttached = true
+    targetPlayer = targetPlayerObj
+    
+    -- CONGELA o player
+    pcall(function()
+        myChar.Humanoid.PlatformStand = true
+    end)
+    print("❄️ Player congelado!")
+    
+    statusLabel.Text = "Grudado e congelado: " .. targetPlayer.Name
+    statusLabel.TextColor3 = Color3.new(0.4, 1, 0.4)
+end
+
+-- Eventos
+attachButton.MouseButton1Click:Connect(function()
+    local nickname = playerTextBox.Text
+    if nickname == "" then
+        statusLabel.Text = "Digite um nick!"
+        statusLabel.TextColor3 = Color3.new(1, 0.8, 0.4)
+        return
+    end
+    
+    if isAttached then
+        statusLabel.Text = "Ja esta grudado!"
+        statusLabel.TextColor3 = Color3.new(1, 0.8, 0.4)
+        return
+    end
+    
+    statusLabel.Text = "Procurando..."
+    statusLabel.TextColor3 = Color3.new(1, 1, 0.4)
+    
+    local foundPlayer = findPlayer(nickname)
+    glueTo(foundPlayer)
+end)
+
+detachButton.MouseButton1Click:Connect(function()
+    if not isAttached then
+        statusLabel.Text = "Nao esta grudado!"
+        statusLabel.TextColor3 = Color3.new(1, 0.8, 0.4)
+        return
+    end
+    
+    unglue()
+    statusLabel.Text = "Desgrудado!"
+    statusLabel.TextColor3 = Color3.new(0.4, 0.8, 1)
+    
+    spawn(function()
+        wait(2)
+        if not isAttached then
+            statusLabel.Text = "Status: Livre"
+            statusLabel.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+        end
+    end)
+end)
+
+-- Cleanup
+Players.PlayerRemoving:Connect(function(leavingPlayer)
+    if targetPlayer == leavingPlayer then
+        unglue()
+        statusLabel.Text = "Player saiu"
+        statusLabel.TextColor3 = Color3.new(1, 0.8, 0.4)
+    end
+end)
+
+print("🎉 GUI CARREGADA COM SUCESSO!")
+print("📍 Verifique o canto superior esquerdo da tela")
+print("🎮 Digite o nick e clique nos botoes")
